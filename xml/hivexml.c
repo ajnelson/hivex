@@ -33,6 +33,8 @@
 #include <libintl.h>
 #endif
 
+#include <getopt.h>
+
 #include <libxml/xmlwriter.h>
 
 #include "hivex.h"
