@@ -51,6 +51,7 @@ and ret =
   | RNodeList                           (* Returns hive_node_h* or NULL. *)
   | RValue                              (* Returns hive_value_h or 0. *)
   | RValueList                          (* Returns hive_value_h* or NULL. *)
+  | RLenValue                           (* Returns offset and length of value. *)
   | RString                             (* Returns char* or NULL. *)
   | RStringList                         (* Returns char** or NULL. *)
   | RLenType                            (* See hivex_value_type. *)
@@ -271,6 +272,17 @@ Return the length of the node data structure.";
     "return the length of a value data structure",
     "\
 Return the length of the value data structure.";
+
+  "value_data_cell_offset", (RLenValue, [AHive; AValue "val"]),
+    "return the offset and length of a value data cell",
+    "\
+Return the offset and length of the value's data cell, not value cell.
+E.g. if the value were \"foobar\" then the length would be 6, and the
+offset would be to a value data cell, which is the data prefixed with
+4 bytes describing the size.  If the length is not greater than 4,
+then 0 is returned, as the data are inline in the value.
+
+Returns 0 and sets errno on error.";
 
   "value_value", (RLenTypeVal, [AHive; AValue "val"]),
     "return data length, data type and data of a value",
@@ -888,6 +900,7 @@ and generate_c_prototype ?(extern = false) name style =
    | RValueList -> pr "hive_value_h *"
    | RString -> pr "char *"
    | RStringList -> pr "char **"
+   | RLenValue -> pr "hive_value_h "
    | RLenType -> pr "int "
    | RLenTypeVal -> pr "char *"
    | RInt32 -> pr "int32_t "
@@ -909,6 +922,7 @@ and generate_c_prototype ?(extern = false) name style =
   ) (snd style);
   (match fst style with
    | RLenType | RLenTypeVal -> pr ", hive_type *t, size_t *len"
+   | RLenValue -> pr ", size_t *len"
    | _ -> ()
   );
   pr ");\n"
@@ -1111,6 +1125,10 @@ On error this returns NULL and sets errno.\n\n"
            pr "\
 Returns 0 on success.
 On error this returns -1 and sets errno.\n\n"
+       | RLenValue ->
+           pr "\
+Returns a value handle.
+On error this returns 0 and sets errno.\n\n"
        | RLenTypeVal ->
            pr "\
 The value is returned as an array of bytes (of length C<len>).
@@ -1622,6 +1640,7 @@ and generate_ocaml_prototype ?(is_external = false) name style =
    | RString -> pr "string"
    | RStringList -> pr "string array"
    | RLenType -> pr "hive_type * int"
+   | RLenValue -> pr "value"
    | RLenTypeVal -> pr "hive_type * string"
    | RInt32 -> pr "int32"
    | RInt64 -> pr "int64"
@@ -1685,6 +1704,7 @@ static hive_type HiveType_val (value);
 static value Val_hive_type (hive_type);
 static value copy_int_array (size_t *);
 static value copy_type_len (size_t, hive_type);
+static value copy_value_len (hive_value_h, size_t);
 static value copy_type_value (const char *, size_t, hive_type);
 static void raise_error (const char *) Noreturn;
 static void raise_closed (const char *) Noreturn;
@@ -1707,6 +1727,7 @@ static void raise_closed (const char *) Noreturn;
       let c_params =
         match fst style with
         | RLenType | RLenTypeVal -> c_params @ [["&t"; "&len"]]
+        | RLenValue -> c_params @ [["&len"]]
         | _ -> c_params in
       let c_params = List.concat c_params in
 
@@ -1779,6 +1800,10 @@ static void raise_closed (const char *) Noreturn;
             pr "  size_t len;\n";
             pr "  hive_type t;\n";
             "-1"
+        | RLenValue ->
+            pr "  hive_value_h r;\n";
+            pr "  size_t len;\n";
+            "0 && errno != 0"
         | RLenTypeVal ->
             pr "  char *r;\n";
             pr "  size_t len;\n";
@@ -1859,6 +1884,7 @@ static void raise_closed (const char *) Noreturn;
            pr "  for (int i = 0; r[i] != NULL; ++i) free (r[i]);\n";
            pr "  free (r);\n"
        | RLenType -> pr "  rv = copy_type_len (len, t);\n"
+       | RLenValue -> pr "  rv = copy_value_len (r, len);\n"
        | RLenTypeVal ->
            pr "  rv = copy_type_value (r, len, t);\n";
            pr "  free (r);\n"
@@ -1977,6 +2003,18 @@ copy_type_len (size_t len, hive_type t)
   Store_field (rv, 0, v);
   v = Val_int (len);
   Store_field (rv, 1, v);
+  CAMLreturn (rv);
+}
+
+static value
+copy_value_len (hive_value_h r, size_t len)
+{
+  CAMLparam0 ();
+  CAMLlocal2 (v, rv);
+
+  rv = caml_alloc (1, 0);
+  v = Val_int (len);
+  Store_field (rv, 0, v);
   CAMLreturn (rv);
 }
 
@@ -2170,6 +2208,7 @@ sub open {
 	 | RString
 	 | RStringList
 	 | RLenType
+	 | RLenValue
 	 | RLenTypeVal
 	 | RInt32
 	 | RInt64 -> ()
@@ -2244,6 +2283,7 @@ and generate_perl_prototype name style =
    | RString -> pr "$string = "
    | RStringList -> pr "@strings = "
    | RLenType -> pr "($type, $len) = "
+   | RLenValue -> pr "($len) = "
    | RLenTypeVal -> pr "($type, $data) = "
    | RInt32 -> pr "$int32 = "
    | RInt64 -> pr "$int64 = "
@@ -2467,6 +2507,7 @@ DESTROY (h)
 	 | RValueList
 	 | RStringList
 	 | RLenType
+	 | RLenValue
 	 | RLenTypeVal -> pr "void\n"
 	 | RInt32 -> pr "SV *\n"
 	 | RInt64 -> pr "SV *\n"
@@ -2637,6 +2678,20 @@ DESTROY (h)
 	       name;
 	     pr "      EXTEND (SP, 2);\n";
 	     pr "      PUSHs (sv_2mortal (newSViv (type)));\n";
+	     pr "      PUSHs (sv_2mortal (newSViv (len)));\n";
+
+	 | RLenValue ->
+	     pr "PREINIT:\n";
+	     pr "      hive_value_h r;\n";
+	     pr "      size_t len;\n";
+	     pr " PPCODE:\n";
+             pr "      r = hivex_%s (%s, &len);\n"
+	       name (String.concat ", " c_params);
+	     free_args ();
+             pr "      if (r == 0)\n";
+             pr "        croak (\"%%s: \", \"%s\", strerror (errno));\n"
+	       name;
+	     pr "      EXTEND (SP, 2);\n";
 	     pr "      PUSHs (sv_2mortal (newSViv (len)));\n";
 
 	 | RLenTypeVal ->
@@ -2877,6 +2932,14 @@ put_len_type (size_t len, hive_type t)
 }
 
 static PyObject *
+put_len (size_t len)
+{
+  PyObject *r = PyTuple_New (1);
+  PyTuple_SetItem (r, 0, PyLong_FromLongLong ((long) len));
+  return r;
+}
+
+static PyObject *
 put_val_type (char *val, size_t len, hive_type t)
 {
   PyObject *r = PyTuple_New (2);
@@ -2916,6 +2979,10 @@ put_val_type (char *val, size_t len, hive_type t)
             pr "  size_t len;\n";
             pr "  hive_type t;\n";
             "-1"
+        | RLenValue ->
+            pr "  int r;\n";
+            pr "  size_t len;\n";
+            "0 && errno != 0"
         | RLenTypeVal ->
             pr "  char *r;\n";
             pr "  size_t len;\n";
@@ -2940,6 +3007,7 @@ put_val_type (char *val, size_t len, hive_type t)
       let c_params =
         match fst style with
         | RLenType | RLenTypeVal -> c_params @ ["&t"; "&len"]
+        | RLenValue -> c_params @ ["&len"]
         | _ -> c_params in
 
       List.iter (
@@ -3084,6 +3152,8 @@ put_val_type (char *val, size_t len, hive_type t)
            pr "  free_strings (r);\n"
        | RLenType ->
            pr "  py_r = put_len_type (len, t);\n"
+       | RLenValue ->
+           pr "  py_r = put_len (len);\n"
        | RLenTypeVal ->
            pr "  py_r = put_val_type (r, len, t);\n";
            pr "  free (r);\n"
@@ -3294,6 +3364,7 @@ get_values (VALUE valuesv, size_t *nr_values)
           | RString -> "string"
           | RStringList -> "list"
           | RLenType -> "hash"
+          | RLenValue -> "integer"
           | RLenTypeVal -> "hash"
           | RInt32 -> "integer"
           | RInt64 -> "integer" in
@@ -3392,6 +3463,10 @@ get_values (VALUE valuesv, size_t *nr_values)
             pr "  size_t len;\n";
             pr "  hive_type t;\n";
             "-1"
+        | RLenValue ->
+            pr "  hive_value_h r;\n";
+            pr "  size_t len;\n";
+            "0 && errno != 0"
         | RLenTypeVal ->
             pr "  char *r;\n";
             pr "  size_t len;\n";
@@ -3416,6 +3491,7 @@ get_values (VALUE valuesv, size_t *nr_values)
       let c_params =
         match ret with
         | RLenType | RLenTypeVal -> c_params @ [["&t"; "&len"]]
+        | RLenValue -> c_params @ [["&len"]]
         | _ -> c_params in
       let c_params = List.concat c_params in
 
@@ -3496,6 +3572,11 @@ get_values (VALUE valuesv, size_t *nr_values)
         pr "  VALUE rv = rb_hash_new ();\n";
         pr "  rb_hash_aset (rv, ID2SYM (rb_intern (\"len\")), INT2NUM (len));\n";
         pr "  rb_hash_aset (rv, ID2SYM (rb_intern (\"type\")), INT2NUM (t));\n";
+        pr "  return rv;\n"
+      | RLenValue ->
+        pr "  VALUE rv = rb_hash_new ();\n";
+        pr "  rb_hash_aset (rv, ID2SYM (rb_intern (\"len\")), INT2NUM (len));\n";
+        pr "  rb_hash_aset (rv, ID2SYM (rb_intern (\"value\")), ULL2NUM (r));\n";
         pr "  return rv;\n"
       | RLenTypeVal ->
         pr "  VALUE rv = rb_hash_new ();\n";
