@@ -23,7 +23,7 @@ bin_PROGRAMS = hivexml
 hivexml_SOURCES = \
   hivexml.c
 
-hivexml_LDADD = ../lib/libhivex.la $(LIBXML2_LIBS)
+hivexml_LDADD = ../lib/libhivex.la $(LIBXML2_LIBS) $(LTLIBICONV)
 hivexml_CFLAGS = \
   -DLOCALEBASEDIR=\""$(datadir)/locale"\" \
   -I$(top_srcdir)/gnulib/lib \
