@@ -28,7 +28,6 @@ hivexml_CFLAGS = \
   -DLOCALEBASEDIR=\""$(datadir)/locale"\" \
   -I$(top_srcdir)/gnulib/lib \
   -I$(top_srcdir)/lib \
-  $(LTLIBICONV) \
   $(LIBXML2_CFLAGS) \
   $(WARN_CFLAGS) $(WERROR_CFLAGS)
 
