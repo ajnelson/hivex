@@ -47,12 +47,12 @@ fi
 # from a distribution tarball.  From those, nothing ocaml-related is
 # required.
 mkdir -p perl/lib/Win
-./generator/generator.ml
+$CONFIGUREDIR/generator/generator.ml
 
 # If no arguments were specified and configure has run before, use the previous
 # arguments
-if test $# = 0 && test -x ./config.status; then
-    ./config.status --recheck
+if test $# = 0 && test -x $CONFIGUREDIR/config.status; then
+    $CONFIGUREDIR/config.status --recheck
 else
     $CONFIGUREDIR/configure "$@"
 fi
