@@ -32,6 +32,13 @@ else
     ./bootstrap && echo "$t" > $curr_status
 fi
 
+# Ensure that gnulib checkout succeeded
+gnulib_file_count=$(ls .gnulib 2>/dev/null | wc -l)
+if test "$gnulib_file_count" -eq 0; then
+    echo gnulib checkout failed, directory '.gnulib' is empty. >&2
+    exit 1
+fi
+
 CONFIGUREDIR=.
 
 # Run configure in BUILDDIR if it's set
