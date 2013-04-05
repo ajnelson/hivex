@@ -168,6 +168,7 @@ AS_IF([test "x$with_readline" != xno],
         ])])
 
 dnl For i18n.
+AM_ICONV()
 AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION([0.17])
 

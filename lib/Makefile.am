@@ -37,7 +37,6 @@ libhivex_la_LDFLAGS = \
 	-version-info 0:0:0 \
 	$(VERSION_SCRIPT_FLAGS)$(srcdir)/hivex.syms \
 	$(LTLIBINTL) \
-	$(LTLIBICONV) \
 	$(LTLIBTHREAD)
 libhivex_la_CFLAGS = $(WARN_CFLAGS) $(WERROR_CFLAGS)
 libhivex_la_CPPFLAGS = -I$(top_srcdir)/gnulib/lib -I$(srcdir)
