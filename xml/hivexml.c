@@ -333,7 +333,7 @@ start_value (xmlTextWriterPtr writer,
   XML_CHECK (xmlTextWriterStartElement, (writer, BAD_CAST "value"));
   XML_CHECK (xmlTextWriterWriteAttribute, (writer, BAD_CAST "type", BAD_CAST type));
   if (encoding)
-    XML_CHECK (xmlTextWriterWriteAttribute, (writer, BAD_CAST "encoding", BAD_CAST encoding));
+    XML_CHECK (xmlTextWriterWriteAttribute, (writer, BAD_CAST "value_encoding", BAD_CAST encoding));
   if (*key) {
     ret = safe_print_string_attribute (NULL, writer, "key", "key_encoding", key);
     if (ret)
