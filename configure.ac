@@ -271,7 +271,22 @@ AS_IF([test "x$enable_perl" != "xno"],[
 AM_CONDITIONAL([HAVE_PERL],
     [test "x$enable_perl" != "xno" && test "x$PERL" != "xno" && test "x$missing_perl_modules" != "xyes"])
 
+#TODO Need to add a check for Python.h (Fedora 19, python3-devel was not installed; wasn't caught until compile step)
 dnl Check for Python (optional, for Python bindings).
+dnl Note that AM_PATH_PYTHON creates these variables:
+dnl * PYTHON
+dnl * PYTHON_VERSION
+dnl * PYTHON_PREFIX
+dnl * PYTHON_EXEC_PREFIX
+dnl * PYTHON_PLATFORM
+dnl * pythondir
+dnl * pkgpythondir
+dnl * pyexecdir
+dnl * pkgpyexecdir
+dnl
+dnl Hence, these variables need to be defined in the below logic to maintain Hivex build practices:
+dnl * PYTHON_CFLAGS
+dnl * PYTHON_INSTALLDIR
 PYTHON_PREFIX=
 PYTHON_VERSION=
 PYTHON_CFLAGS=
@@ -283,19 +298,9 @@ AC_ARG_ENABLE([python],
         [enable_python=yes])
 AS_IF([test "x$enable_python" != "xno"],
         [
-        AC_CHECK_PROG([PYTHON],[python],[python],[no])
+        AM_PATH_PYTHON([3],[],[PYTHON=no])
 
         if test "x$PYTHON" != "xno"; then
-	    AC_MSG_CHECKING([Python prefix])
-            PYTHON_PREFIX=`$PYTHON -c "import sys; print (sys.prefix)"`
-	    AC_MSG_RESULT([$PYTHON_PREFIX])
-
-	    AC_MSG_CHECKING([Python version])
-            PYTHON_VERSION_MAJOR=`$PYTHON -c "import sys; print (sys.version_info@<:@0@:>@)"`
-            PYTHON_VERSION_MINOR=`$PYTHON -c "import sys; print (sys.version_info@<:@1@:>@)"`
-            PYTHON_VERSION="$PYTHON_VERSION_MAJOR.$PYTHON_VERSION_MINOR"
-	    AC_MSG_RESULT([$PYTHON_VERSION])
-
             AC_MSG_CHECKING([for Python include path])
             if test -z "$PYTHON_CFLAGS"; then
                 python_path=`$PYTHON -c "import distutils.sysconfig; \
@@ -352,8 +357,6 @@ AS_IF([test "x$enable_python" != "xno"],
             LIBS="$old_LIBS"
         fi
 
-        AC_SUBST(PYTHON_PREFIX)
-        AC_SUBST(PYTHON_VERSION)
         AC_SUBST(PYTHON_CFLAGS)
         AC_SUBST(PYTHON_INSTALLDIR)
         AC_SUBST(PYTHON_EXT_SUFFIX)

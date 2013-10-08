@@ -26,11 +26,11 @@ EXTRA_DIST = \
 
 if HAVE_PYTHON
 
-pythondir = $(PYTHON_INSTALLDIR)
+pythonhivexdir = $(PYTHON_INSTALLDIR)
 
-python_DATA = hivex.py
+pythonhivex_DATA = hivex.py
 
-python_LTLIBRARIES = libhivexmod.la
+pythonhivex_LTLIBRARIES = libhivexmod.la
 
 libhivexmod_la_SOURCES = hivex-py.c
 libhivexmod_la_CFLAGS = -Wall $(PYTHON_CFLAGS) \
